@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>AI会話機能で音声入力を行うためにマイクを使用します。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>AIキャラクターのアバターに設定するカスタム画像を選択するために写真ライブラリを使用します。</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

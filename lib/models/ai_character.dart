@@ -19,17 +19,36 @@ enum ToneStyle {
   }
 }
 
+/// AIキャラクターの見た目の種類。
+enum AvatarType {
+  /// プリセットの絵文字アイコン。
+  emoji,
+
+  /// 端末の写真ライブラリから選んだカスタム画像。
+  image;
+
+  static AvatarType fromName(String? name) {
+    return AvatarType.values.firstWhere(
+      (t) => t.name == name,
+      orElse: () => AvatarType.emoji,
+    );
+  }
+}
+
 /// ユーザーがカスタマイズするAIキャラクターの設定。
 ///
-/// 名前・口調・性格(優しさ/元気さのスライダー)・見た目(絵文字アイコン)を保持し、
-/// [buildSystemInstruction] でAIへの人格指定プロンプトに変換する。
+/// 名前・口調・性格(優しさ/元気さのスライダー)・見た目(絵文字アイコン、または
+/// 端末から選んだカスタム画像)を保持し、[buildSystemInstruction] でAIへの
+/// 人格指定プロンプトに変換する。
 class AiCharacter {
   const AiCharacter({
     this.name = 'ミライ',
     this.tone = ToneStyle.casual,
     this.kindness = 0.7,
     this.energy = 0.6,
+    this.avatarType = AvatarType.emoji,
     this.avatarEmoji = '🤖',
+    this.avatarImagePath,
   });
 
   /// キャラクターの名前(自由入力)。
@@ -44,8 +63,15 @@ class AiCharacter {
   /// 性格:元気さ。0.0(落ち着き)〜1.0(元気)。
   final double energy;
 
-  /// 見た目として使う絵文字アイコン。
+  /// 見た目の種類(絵文字/カスタム画像)。
+  final AvatarType avatarType;
+
+  /// 見た目として使う絵文字アイコン([avatarType]が[AvatarType.emoji]のとき使用)。
   final String avatarEmoji;
+
+  /// 見た目として使うカスタム画像の端末内保存パス
+  /// ([avatarType]が[AvatarType.image]のとき使用)。
+  final String? avatarImagePath;
 
   /// 見た目の選択肢(シンプルな絵文字ベース)。
   static const List<String> avatarOptions = [
@@ -64,14 +90,18 @@ class AiCharacter {
     ToneStyle? tone,
     double? kindness,
     double? energy,
+    AvatarType? avatarType,
     String? avatarEmoji,
+    String? avatarImagePath,
   }) {
     return AiCharacter(
       name: name ?? this.name,
       tone: tone ?? this.tone,
       kindness: kindness ?? this.kindness,
       energy: energy ?? this.energy,
+      avatarType: avatarType ?? this.avatarType,
       avatarEmoji: avatarEmoji ?? this.avatarEmoji,
+      avatarImagePath: avatarImagePath ?? this.avatarImagePath,
     );
   }
 
@@ -81,7 +111,9 @@ class AiCharacter {
       'tone': tone.name,
       'kindness': kindness,
       'energy': energy,
+      'avatarType': avatarType.name,
       'avatarEmoji': avatarEmoji,
+      'avatarImagePath': avatarImagePath,
     };
   }
 
@@ -91,7 +123,9 @@ class AiCharacter {
       tone: ToneStyle.fromName(json['tone'] as String?),
       kindness: (json['kindness'] as num?)?.toDouble() ?? 0.7,
       energy: (json['energy'] as num?)?.toDouble() ?? 0.6,
+      avatarType: AvatarType.fromName(json['avatarType'] as String?),
       avatarEmoji: json['avatarEmoji'] as String? ?? '🤖',
+      avatarImagePath: json['avatarImagePath'] as String?,
     );
   }
 
