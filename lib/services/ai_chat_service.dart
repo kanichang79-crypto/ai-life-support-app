@@ -19,7 +19,7 @@ class AiChatService {
   static const String _apiKey =
       String.fromEnvironment('GOOGLE_GEMINI_API_KEY');
 
-  static const String _model = 'gemini-2.5-flash';
+  static const String _model = 'gemini-3.6-flash';
 
   static const String _endpoint =
       'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent';
