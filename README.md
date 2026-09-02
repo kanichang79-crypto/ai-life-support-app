@@ -36,3 +36,12 @@ flutter run
 ```
 flutter test
 ```
+
+## Web版のデプロイ(GitHub Pages)
+
+`main` ブランチに push すると `.github/workflows/deploy-web.yml` が自動実行され、
+Web版がビルドされて GitHub Pages に公開されます。
+
+公開URL: `https://<ユーザー名>.github.io/ai-life-support-app/`
+
+初回のみ、リポジトリの Settings > Pages で Source を「GitHub Actions」に設定してください。
