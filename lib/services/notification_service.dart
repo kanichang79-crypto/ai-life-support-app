@@ -54,7 +54,11 @@ class NotificationService {
 
     await _plugin
         .resolvePlatformSpecificImplementation<
-            DarwinFlutterLocalNotificationsPlugin>()
+            IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
+    await _plugin
+        .resolvePlatformSpecificImplementation<
+            MacOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(alert: true, badge: true, sound: true);
 
     _initialized = true;
