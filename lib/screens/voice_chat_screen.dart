@@ -118,24 +118,45 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
       _recordingBuffer = null;
       _recordingDone = null;
 
+      final sttStopwatch = Stopwatch()..start();
       final transcript = await SttService.instance.transcribe(audioBytes);
+      debugPrint('[VoiceChat] Speech-to-Text: ${sttStopwatch.elapsedMilliseconds}ms');
       if (!mounted) return;
       setState(() => _messages.add(ChatMessage(role: ChatRole.user, text: transcript)));
       _scrollToBottom();
 
+      final aiStopwatch = Stopwatch()..start();
       final reply = await AiChatService.instance.reply(_messages);
+      debugPrint('[VoiceChat] AI応答生成: ${aiStopwatch.elapsedMilliseconds}ms');
       if (!mounted) return;
+      // テキストは先に画面へ表示し、体感速度を優先する。
+      // 音声合成・再生はブロックせずバックグラウンドで行う([_speak]参照)。
       setState(() => _messages.add(ChatMessage(role: ChatRole.assistant, text: reply)));
       _scrollToBottom();
-
-      final audio = await TtsService.instance.synthesize(reply);
-      if (!mounted) return;
-      await _audioPlayer.play(BytesSource(audio));
+      unawaited(_speak(reply));
     } catch (e) {
       if (!mounted) return;
       setState(() => _errorMessage = e.toString());
     } finally {
       if (mounted) setState(() => _state = _ConversationState.idle);
+    }
+  }
+
+  /// AIの返答[text]を音声合成して再生する。
+  ///
+  /// テキスト表示を待たせないよう、呼び出し元では await せずバックグラウンドで
+  /// 実行する想定。ここで発生したエラーは会話フロー自体は止めず、
+  /// エラーメッセージの表示のみ行う。
+  Future<void> _speak(String text) async {
+    try {
+      final ttsStopwatch = Stopwatch()..start();
+      final audio = await TtsService.instance.synthesize(text);
+      debugPrint('[VoiceChat] Text-to-Speech: ${ttsStopwatch.elapsedMilliseconds}ms');
+      if (!mounted) return;
+      await _audioPlayer.play(BytesSource(audio));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _errorMessage = e.toString());
     }
   }
 
