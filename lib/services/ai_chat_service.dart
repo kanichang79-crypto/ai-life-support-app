@@ -2,10 +2,11 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../models/ai_character.dart';
 import '../models/chat_message.dart';
 
-/// Google Gemini API (Generative Language API) を使って、固定キャラクターとの
-/// 会話の返答テキストを生成するサービス。
+/// Google Gemini API (Generative Language API) を使って、カスタマイズされた
+/// AIキャラクターとの会話の返答テキストを生成するサービス。
 ///
 /// 同じGoogle CloudプロジェクトでGenerative Language APIを有効化していれば、
 /// [TtsService]/[SttService] と同じAPIキーを使うこともできる。ビルド時に
@@ -24,24 +25,19 @@ class AiChatService {
   static const String _endpoint =
       'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent';
 
-  /// 固定キャラクターの人格設定。キャラクターのカスタマイズ機能が実装されるまでは
-  /// この内容で固定する。
-  static const String _systemInstruction =
-      'あなたは「ミライ」という名前の、ユーザーの日常生活をサポートする明るく親しみやすいAIアシスタントです。'
-      '丁寧すぎない、親しみやすい話し言葉の日本語で応答してください。'
-      '回答は必ず2〜3文以内の簡潔な文章にまとめてください。前置きや繰り返しは避け、'
-      '結論から端的に話し、難しい専門用語は避けてください。'
-      'ユーザーの体調や気分を気遣いながら、雑談やちょっとした相談にも気さくに応じてください。';
-
   /// APIキーがビルド時に設定されているかどうか。
   bool get isConfigured => _apiKey.isNotEmpty;
 
   /// [conversation] (これまでの会話履歴。最後の要素が直近のユーザー発言)をもとに、
-  /// AIキャラクターの返答テキストを生成して返す。
+  /// [character] の設定(名前・口調・性格)を反映したAIキャラクターの返答テキストを
+  /// 生成して返す。[character] を省略した場合はデフォルト設定が使われる。
   ///
   /// APIキー未設定の場合は [AiChatConfigException]、
   /// APIからのエラー応答時や返答が得られない場合は [AiChatApiException] を投げる。
-  Future<String> reply(List<ChatMessage> conversation) async {
+  Future<String> reply(
+    List<ChatMessage> conversation, {
+    AiCharacter character = const AiCharacter(),
+  }) async {
     if (!isConfigured) {
       throw AiChatConfigException(
         'GOOGLE_GEMINI_API_KEY が設定されていません。'
@@ -66,7 +62,7 @@ class AiChatService {
         body: jsonEncode({
           'systemInstruction': {
             'parts': [
-              {'text': _systemInstruction},
+              {'text': character.buildSystemInstruction()},
             ],
           },
           'contents': contents,
