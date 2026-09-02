@@ -5,10 +5,13 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:record/record.dart';
 
+import '../models/ai_character.dart';
 import '../models/chat_message.dart';
+import '../repositories/ai_character_repository.dart';
 import '../services/ai_chat_service.dart';
 import '../services/stt_service.dart';
 import '../services/tts_service.dart';
+import 'ai_character_settings_screen.dart';
 
 /// 現在の会話画面の状態。
 enum _ConversationState { idle, recording, processing }
@@ -21,7 +24,8 @@ enum _ConversationState { idle, recording, processing }
 /// 3. 返答をText-to-Speech APIで音声にして再生する
 /// という一連の流れを行い、やり取りをチャット形式で画面に表示する。
 ///
-/// キャラクターは固定の1キャラクター([AiChatService] 側で設定)。
+/// AIキャラクターの名前・口調・性格・見た目は [AiCharacterSettingsScreen] で
+/// カスタマイズでき、[AiCharacterRepository] 経由で端末に保存・復元される。
 class VoiceChatScreen extends StatefulWidget {
   const VoiceChatScreen({super.key});
 
@@ -33,6 +37,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   final AudioRecorder _recorder = AudioRecorder();
   final AudioPlayer _audioPlayer = AudioPlayer();
   final ScrollController _scrollController = ScrollController();
+  final AiCharacterRepository _characterRepository = AiCharacterRepository();
 
   final List<ChatMessage> _messages = [];
 
@@ -42,6 +47,30 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
 
   _ConversationState _state = _ConversationState.idle;
   String? _errorMessage;
+  AiCharacter _character = const AiCharacter();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCharacter();
+  }
+
+  Future<void> _loadCharacter() async {
+    final character = await _characterRepository.load();
+    if (!mounted) return;
+    setState(() => _character = character);
+  }
+
+  Future<void> _openCharacterSettings() async {
+    final updated = await Navigator.of(context).push<AiCharacter>(
+      MaterialPageRoute(
+        builder: (_) => AiCharacterSettingsScreen(character: _character),
+      ),
+    );
+    if (updated != null && mounted) {
+      setState(() => _character = updated);
+    }
+  }
 
   @override
   void dispose() {
@@ -126,7 +155,8 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
       _scrollToBottom();
 
       final aiStopwatch = Stopwatch()..start();
-      final reply = await AiChatService.instance.reply(_messages);
+      final reply =
+          await AiChatService.instance.reply(_messages, character: _character);
       debugPrint('[VoiceChat] AI応答生成: ${aiStopwatch.elapsedMilliseconds}ms');
       if (!mounted) return;
       // テキストは先に画面へ表示し、体感速度を優先する。
@@ -179,7 +209,16 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('AI会話')),
+      appBar: AppBar(
+        title: Text('AI会話 - ${_character.name}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.tune),
+            tooltip: 'AIキャラクター設定',
+            onPressed: _openCharacterSettings,
+          ),
+        ],
+      ),
       body: Column(
         children: [
           if (missingKeys.isNotEmpty)
@@ -199,11 +238,11 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
             ),
           Expanded(
             child: _messages.isEmpty
-                ? const Center(
+                ? Center(
                     child: Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(24),
                       child: Text(
-                        '下のマイクボタンをタップして話しかけてみましょう。',
+                        '下のマイクボタンをタップして${_character.name}に話しかけてみましょう。',
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -212,8 +251,10 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
                     itemCount: _messages.length,
-                    itemBuilder: (context, index) =>
-                        _ChatBubble(message: _messages[index]),
+                    itemBuilder: (context, index) => _ChatBubble(
+                      message: _messages[index],
+                      avatarEmoji: _character.avatarEmoji,
+                    ),
                   ),
           ),
           if (_errorMessage != null)
@@ -281,27 +322,41 @@ class _MicButton extends StatelessWidget {
 }
 
 class _ChatBubble extends StatelessWidget {
-  const _ChatBubble({required this.message});
+  const _ChatBubble({required this.message, required this.avatarEmoji});
 
   final ChatMessage message;
+  final String avatarEmoji;
 
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == ChatRole.user;
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isUser ? colorScheme.primaryContainer : colorScheme.secondaryContainer,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(message.text),
+    final bubble = Container(
+      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isUser ? colorScheme.primaryContainer : colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(16),
       ),
+      child: Text(message.text),
+    );
+
+    if (isUser) {
+      return Align(alignment: Alignment.centerRight, child: bubble);
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(right: 6, bottom: 4),
+          child: Text(avatarEmoji, style: const TextStyle(fontSize: 22)),
+        ),
+        Flexible(child: bubble),
+      ],
     );
   }
 }
