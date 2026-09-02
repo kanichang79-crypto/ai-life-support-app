@@ -26,6 +26,8 @@
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>AI会話機能で音声入力を行うためにマイクを使用します。</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>
