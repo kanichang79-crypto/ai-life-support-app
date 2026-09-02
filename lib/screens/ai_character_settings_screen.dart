@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/ai_character.dart';
 import '../repositories/ai_character_repository.dart';
@@ -21,13 +24,17 @@ class _AiCharacterSettingsScreenState
     extends State<AiCharacterSettingsScreen> {
   final _repository = AiCharacterRepository();
   final _formKey = GlobalKey<FormState>();
+  final _imagePicker = ImagePicker();
   late final TextEditingController _nameController;
 
   late ToneStyle _tone;
   late double _kindness;
   late double _energy;
+  late AvatarType _avatarType;
   late String _avatarEmoji;
+  String? _avatarImagePath;
   bool _saving = false;
+  bool _pickingImage = false;
 
   @override
   void initState() {
@@ -36,13 +43,45 @@ class _AiCharacterSettingsScreenState
     _tone = widget.character.tone;
     _kindness = widget.character.kindness;
     _energy = widget.character.energy;
+    _avatarType = widget.character.avatarType;
     _avatarEmoji = widget.character.avatarEmoji;
+    _avatarImagePath = widget.character.avatarImagePath;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickCustomImage() async {
+    setState(() => _pickingImage = true);
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+
+      final savedPath = await _repository.saveAvatarImage(
+        picked.path,
+        previousImagePath: _avatarImagePath,
+      );
+      if (!mounted) return;
+      setState(() {
+        _avatarType = AvatarType.image;
+        _avatarImagePath = savedPath;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('画像を選択できませんでした: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _pickingImage = false);
+    }
   }
 
   Future<void> _save() async {
@@ -54,7 +93,9 @@ class _AiCharacterSettingsScreenState
       tone: _tone,
       kindness: _kindness,
       energy: _energy,
+      avatarType: _avatarType,
       avatarEmoji: _avatarEmoji,
+      avatarImagePath: _avatarImagePath,
     );
     await _repository.save(character);
     if (!mounted) return;
@@ -71,10 +112,21 @@ class _AiCharacterSettingsScreenState
           padding: const EdgeInsets.all(16),
           children: [
             Center(
-              child: Text(
-                _avatarEmoji,
-                style: const TextStyle(fontSize: 64),
-              ),
+              child: _avatarType == AvatarType.image && _avatarImagePath != null
+                  ? ClipOval(
+                      child: Image.file(
+                        File(_avatarImagePath!),
+                        width: 88,
+                        height: 88,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.broken_image, size: 64),
+                      ),
+                    )
+                  : Text(
+                      _avatarEmoji,
+                      style: const TextStyle(fontSize: 64),
+                    ),
             ),
             const SizedBox(height: 24),
             const _SectionLabel('名前'),
@@ -125,14 +177,48 @@ class _AiCharacterSettingsScreenState
             Wrap(
               spacing: 12,
               runSpacing: 12,
-              children: AiCharacter.avatarOptions.map((emoji) {
-                final isSelected = emoji == _avatarEmoji;
-                return _AvatarChoice(
-                  emoji: emoji,
-                  isSelected: isSelected,
-                  onTap: () => setState(() => _avatarEmoji = emoji),
-                );
-              }).toList(),
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                ...AiCharacter.avatarOptions.map((emoji) {
+                  final isSelected =
+                      _avatarType == AvatarType.emoji && emoji == _avatarEmoji;
+                  return _AvatarSlot(
+                    isSelected: isSelected,
+                    onTap: () => setState(() {
+                      _avatarType = AvatarType.emoji;
+                      _avatarEmoji = emoji;
+                    }),
+                    child: Text(emoji, style: const TextStyle(fontSize: 28)),
+                  );
+                }),
+                if (_avatarType == AvatarType.image && _avatarImagePath != null)
+                  _AvatarSlot(
+                    isSelected: true,
+                    onTap: _pickingImage ? null : _pickCustomImage,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.file(
+                        File(_avatarImagePath!),
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.broken_image),
+                      ),
+                    ),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: _pickingImage ? null : _pickCustomImage,
+                  icon: _pickingImage
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.add_photo_alternate_outlined),
+                  label: const Text('カスタム画像'),
+                ),
+              ],
             ),
             const SizedBox(height: 32),
             FilledButton(
@@ -200,16 +286,17 @@ class _PersonalitySlider extends StatelessWidget {
   }
 }
 
-class _AvatarChoice extends StatelessWidget {
-  const _AvatarChoice({
-    required this.emoji,
+/// 見た目の選択肢1つ分の枠(絵文字・カスタム画像共通)。
+class _AvatarSlot extends StatelessWidget {
+  const _AvatarSlot({
+    required this.child,
     required this.isSelected,
     required this.onTap,
   });
 
-  final String emoji;
+  final Widget child;
   final bool isSelected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -229,7 +316,7 @@ class _AvatarChoice extends StatelessWidget {
           ),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(emoji, style: const TextStyle(fontSize: 28)),
+        child: child,
       ),
     );
   }

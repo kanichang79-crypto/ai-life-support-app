@@ -53,6 +53,10 @@ dependencies:
   audioplayers: ^6.1.0
   # マイクからの音声録音(Speech-to-Text向けのPCM取得)に使用
   record: ^7.1.1
+  # AIキャラクターのカスタム画像を写真ライブラリから選択するために使用
+  image_picker: ^1.1.2
+  # 選択したカスタム画像を端末に永続保存するための保存先ディレクトリ取得に使用
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:

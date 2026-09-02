@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
@@ -253,7 +254,7 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                     itemCount: _messages.length,
                     itemBuilder: (context, index) => _ChatBubble(
                       message: _messages[index],
-                      avatarEmoji: _character.avatarEmoji,
+                      character: _character,
                     ),
                   ),
           ),
@@ -322,10 +323,10 @@ class _MicButton extends StatelessWidget {
 }
 
 class _ChatBubble extends StatelessWidget {
-  const _ChatBubble({required this.message, required this.avatarEmoji});
+  const _ChatBubble({required this.message, required this.character});
 
   final ChatMessage message;
-  final String avatarEmoji;
+  final AiCharacter character;
 
   @override
   Widget build(BuildContext context) {
@@ -353,10 +354,36 @@ class _ChatBubble extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(right: 6, bottom: 4),
-          child: Text(avatarEmoji, style: const TextStyle(fontSize: 22)),
+          child: _AssistantAvatar(character: character),
         ),
         Flexible(child: bubble),
       ],
     );
+  }
+}
+
+/// AIキャラクターのアバター(カスタム画像が設定されていればそれを、
+/// なければ絵文字アイコンを表示する)。
+class _AssistantAvatar extends StatelessWidget {
+  const _AssistantAvatar({required this.character});
+
+  final AiCharacter character;
+
+  @override
+  Widget build(BuildContext context) {
+    if (character.avatarType == AvatarType.image &&
+        character.avatarImagePath != null) {
+      return ClipOval(
+        child: Image.file(
+          File(character.avatarImagePath!),
+          width: 26,
+          height: 26,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.smart_toy_outlined, size: 22),
+        ),
+      );
+    }
+    return Text(character.avatarEmoji, style: const TextStyle(fontSize: 22));
   }
 }
