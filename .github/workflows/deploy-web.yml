@@ -33,9 +33,11 @@ jobs:
       - run: |
           flutter build web --release \
             --base-href "/${{ github.event.repository.name }}/" \
-            --dart-define=GOOGLE_TTS_API_KEY="$GOOGLE_TTS_API_KEY"
+            --dart-define=GOOGLE_TTS_API_KEY="$GOOGLE_TTS_API_KEY" \
+            --dart-define=GOOGLE_GEMINI_API_KEY="$GOOGLE_GEMINI_API_KEY"
         env:
           GOOGLE_TTS_API_KEY: ${{ secrets.GOOGLE_TTS_API_KEY }}
+          GOOGLE_GEMINI_API_KEY: ${{ secrets.GOOGLE_GEMINI_API_KEY }}
 
       - uses: actions/configure-pages@v5
 

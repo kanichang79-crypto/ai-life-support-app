@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'screens/ai_support_screen.dart';
 import 'screens/alarm_list_screen.dart';
 import 'screens/task_list_screen.dart';
+import 'screens/voice_chat_screen.dart';
 import 'services/notification_service.dart';
 
 void main() async {
@@ -44,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: switch (_selectedIndex) {
         0 => const TaskListScreen(),
         1 => const AlarmListScreen(),
-        _ => const AiSupportScreen(),
+        _ => const VoiceChatScreen(),
       },
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
@@ -53,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.checklist), label: 'タスク'),
           NavigationDestination(icon: Icon(Icons.alarm), label: 'アラーム'),
-          NavigationDestination(icon: Icon(Icons.volume_up), label: 'AI音声'),
+          NavigationDestination(icon: Icon(Icons.mic), label: 'AI会話'),
         ],
       ),
     );
