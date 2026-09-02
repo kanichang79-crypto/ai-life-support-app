@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
@@ -12,6 +11,7 @@ import '../repositories/ai_character_repository.dart';
 import '../services/ai_chat_service.dart';
 import '../services/stt_service.dart';
 import '../services/tts_service.dart';
+import '../widgets/character_avatar_image.dart';
 import 'ai_character_settings_screen.dart';
 
 /// 現在の会話画面の状態。
@@ -354,36 +354,16 @@ class _ChatBubble extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(right: 6, bottom: 4),
-          child: _AssistantAvatar(character: character),
+          child: ClipOval(
+            child: CharacterAvatarImage(
+              character: character,
+              size: 26,
+              emojiFontSize: 22,
+            ),
+          ),
         ),
         Flexible(child: bubble),
       ],
     );
-  }
-}
-
-/// AIキャラクターのアバター(カスタム画像が設定されていればそれを、
-/// なければ絵文字アイコンを表示する)。
-class _AssistantAvatar extends StatelessWidget {
-  const _AssistantAvatar({required this.character});
-
-  final AiCharacter character;
-
-  @override
-  Widget build(BuildContext context) {
-    if (character.avatarType == AvatarType.image &&
-        character.avatarImagePath != null) {
-      return ClipOval(
-        child: Image.file(
-          File(character.avatarImagePath!),
-          width: 26,
-          height: 26,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              const Icon(Icons.smart_toy_outlined, size: 22),
-        ),
-      );
-    }
-    return Text(character.avatarEmoji, style: const TextStyle(fontSize: 22));
   }
 }
