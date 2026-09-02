@@ -1,10 +1,12 @@
-import 'dart:io';
+import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/ai_character.dart';
 import '../repositories/ai_character_repository.dart';
+import '../widgets/character_avatar_image.dart';
 
 /// AIキャラクターの名前・口調・性格・見た目をカスタマイズする画面。
 ///
@@ -33,6 +35,7 @@ class _AiCharacterSettingsScreenState
   late AvatarType _avatarType;
   late String _avatarEmoji;
   String? _avatarImagePath;
+  String? _avatarImageBase64;
   bool _saving = false;
   bool _pickingImage = false;
 
@@ -46,6 +49,7 @@ class _AiCharacterSettingsScreenState
     _avatarType = widget.character.avatarType;
     _avatarEmoji = widget.character.avatarEmoji;
     _avatarImagePath = widget.character.avatarImagePath;
+    _avatarImageBase64 = widget.character.avatarImageBase64;
   }
 
   @override
@@ -53,6 +57,15 @@ class _AiCharacterSettingsScreenState
     _nameController.dispose();
     super.dispose();
   }
+
+  /// 現在編集中の内容を反映した[AiCharacter]。プレビュー表示にのみ使用する
+  /// (保存は[_save]で別途行う)。
+  AiCharacter get _previewCharacter => AiCharacter(
+        avatarType: _avatarType,
+        avatarEmoji: _avatarEmoji,
+        avatarImagePath: _avatarImagePath,
+        avatarImageBase64: _avatarImageBase64,
+      );
 
   Future<void> _pickCustomImage() async {
     setState(() => _pickingImage = true);
@@ -65,15 +78,29 @@ class _AiCharacterSettingsScreenState
       );
       if (picked == null) return;
 
-      final savedPath = await _repository.saveAvatarImage(
-        picked.path,
-        previousImagePath: _avatarImagePath,
-      );
-      if (!mounted) return;
-      setState(() {
-        _avatarType = AvatarType.image;
-        _avatarImagePath = savedPath;
-      });
+      // Web版は`dart:io`のファイルAPI/path_providerが使えないため、選んだ画像を
+      // Base64エンコードしてAiCharacterのJSONに直接埋め込む。ネイティブ版は
+      // 従来通り端末のドキュメントディレクトリにファイルとして保存する。
+      if (kIsWeb) {
+        final bytes = await picked.readAsBytes();
+        if (!mounted) return;
+        setState(() {
+          _avatarType = AvatarType.image;
+          _avatarImageBase64 = base64Encode(bytes);
+          _avatarImagePath = null;
+        });
+      } else {
+        final savedPath = await _repository.saveAvatarImage(
+          picked.path,
+          previousImagePath: _avatarImagePath,
+        );
+        if (!mounted) return;
+        setState(() {
+          _avatarType = AvatarType.image;
+          _avatarImagePath = savedPath;
+          _avatarImageBase64 = null;
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -96,6 +123,7 @@ class _AiCharacterSettingsScreenState
       avatarType: _avatarType,
       avatarEmoji: _avatarEmoji,
       avatarImagePath: _avatarImagePath,
+      avatarImageBase64: _avatarImageBase64,
     );
     await _repository.save(character);
     if (!mounted) return;
@@ -112,21 +140,13 @@ class _AiCharacterSettingsScreenState
           padding: const EdgeInsets.all(16),
           children: [
             Center(
-              child: _avatarType == AvatarType.image && _avatarImagePath != null
-                  ? ClipOval(
-                      child: Image.file(
-                        File(_avatarImagePath!),
-                        width: 88,
-                        height: 88,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.broken_image, size: 64),
-                      ),
-                    )
-                  : Text(
-                      _avatarEmoji,
-                      style: const TextStyle(fontSize: 64),
-                    ),
+              child: ClipOval(
+                child: CharacterAvatarImage(
+                  character: _previewCharacter,
+                  size: 88,
+                  emojiFontSize: 64,
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             const _SectionLabel('名前'),
@@ -191,19 +211,16 @@ class _AiCharacterSettingsScreenState
                     child: Text(emoji, style: const TextStyle(fontSize: 28)),
                   );
                 }),
-                if (_avatarType == AvatarType.image && _avatarImagePath != null)
+                if (_avatarType == AvatarType.image &&
+                    (_avatarImagePath != null || _avatarImageBase64 != null))
                   _AvatarSlot(
                     isSelected: true,
                     onTap: _pickingImage ? null : _pickCustomImage,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.file(
-                        File(_avatarImagePath!),
-                        width: 56,
-                        height: 56,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.broken_image),
+                      child: CharacterAvatarImage(
+                        character: _previewCharacter,
+                        size: 56,
                       ),
                     ),
                   ),

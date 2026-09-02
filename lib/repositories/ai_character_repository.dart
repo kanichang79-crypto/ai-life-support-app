@@ -10,7 +10,10 @@ import '../models/ai_character.dart';
 /// JSON文字列として保存・読み込みするリポジトリ。
 ///
 /// アバターに使うカスタム画像は、写真ライブラリの一時ファイルではアプリ終了後に
-/// 参照できなくなるため、アプリのドキュメントディレクトリへコピーして永続化する。
+/// 参照できなくなるため、アプリのドキュメントディレクトリへコピーして永続化する
+/// ([saveAvatarImage]、ネイティブ環境専用)。Web版は`dart:io`のファイルAPIや
+/// path_providerが使えないため、呼び出し側([AiCharacterSettingsScreen])で
+/// Base64エンコードして[AiCharacter.avatarImageBase64]に直接保存する。
 class AiCharacterRepository {
   static const _storageKey = 'ai_character';
 
@@ -33,6 +36,12 @@ class AiCharacterRepository {
   ///
   /// [previousImagePath] が指定されていれば、コピー完了後にその画像ファイルを
   /// 削除して端末のストレージを圧迫しないようにする。
+  ///
+  /// Web版では`path_provider`がドキュメントディレクトリを提供できず
+  /// (`MissingPluginException`)、`dart:io`のファイルAPIも使えないため、
+  /// このメソッドはネイティブ環境(Android/iOS/デスクトップ)専用。
+  /// Web版では代わりにBase64エンコードした画像データをそのまま
+  /// [AiCharacter.avatarImageBase64]に保存する(呼び出し側で分岐)。
   Future<String> saveAvatarImage(
     String sourceImagePath, {
     String? previousImagePath,

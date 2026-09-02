@@ -40,6 +40,11 @@ enum AvatarType {
 /// 名前・口調・性格(優しさ/元気さのスライダー)・見た目(絵文字アイコン、または
 /// 端末から選んだカスタム画像)を保持し、[buildSystemInstruction] でAIへの
 /// 人格指定プロンプトに変換する。
+///
+/// カスタム画像は、ネイティブ環境(Android/iOS/デスクトップ)では
+/// [avatarImagePath](端末内に保存した画像ファイルのパス)、Web環境では
+/// `dart:io`のファイルAPIが使えないため[avatarImageBase64](Base64エンコードした
+/// 画像データ)のどちらかに保存される。
 class AiCharacter {
   const AiCharacter({
     this.name = 'ミライ',
@@ -49,6 +54,7 @@ class AiCharacter {
     this.avatarType = AvatarType.emoji,
     this.avatarEmoji = '🤖',
     this.avatarImagePath,
+    this.avatarImageBase64,
   });
 
   /// キャラクターの名前(自由入力)。
@@ -69,9 +75,13 @@ class AiCharacter {
   /// 見た目として使う絵文字アイコン([avatarType]が[AvatarType.emoji]のとき使用)。
   final String avatarEmoji;
 
-  /// 見た目として使うカスタム画像の端末内保存パス
-  /// ([avatarType]が[AvatarType.image]のとき使用)。
+  /// 見た目として使うカスタム画像の端末内保存パス(ネイティブ環境のみ、
+  /// [avatarType]が[AvatarType.image]のとき使用)。
   final String? avatarImagePath;
+
+  /// 見た目として使うカスタム画像のBase64エンコードデータ(Web環境のみ、
+  /// [avatarType]が[AvatarType.image]のとき使用)。
+  final String? avatarImageBase64;
 
   /// 見た目の選択肢(シンプルな絵文字ベース)。
   static const List<String> avatarOptions = [
@@ -93,6 +103,7 @@ class AiCharacter {
     AvatarType? avatarType,
     String? avatarEmoji,
     String? avatarImagePath,
+    String? avatarImageBase64,
   }) {
     return AiCharacter(
       name: name ?? this.name,
@@ -102,6 +113,7 @@ class AiCharacter {
       avatarType: avatarType ?? this.avatarType,
       avatarEmoji: avatarEmoji ?? this.avatarEmoji,
       avatarImagePath: avatarImagePath ?? this.avatarImagePath,
+      avatarImageBase64: avatarImageBase64 ?? this.avatarImageBase64,
     );
   }
 
@@ -114,6 +126,7 @@ class AiCharacter {
       'avatarType': avatarType.name,
       'avatarEmoji': avatarEmoji,
       'avatarImagePath': avatarImagePath,
+      'avatarImageBase64': avatarImageBase64,
     };
   }
 
@@ -126,6 +139,7 @@ class AiCharacter {
       avatarType: AvatarType.fromName(json['avatarType'] as String?),
       avatarEmoji: json['avatarEmoji'] as String? ?? '🤖',
       avatarImagePath: json['avatarImagePath'] as String?,
+      avatarImageBase64: json['avatarImageBase64'] as String?,
     );
   }
 
