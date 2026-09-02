@@ -47,6 +47,10 @@ dependencies:
   timezone: ^0.11.1
   # 端末のタイムゾーン識別子を取得するために使用
   flutter_timezone: ^5.1.0
+  # Google Cloud Text-to-Speech APIへのHTTPリクエストに使用
+  http: ^1.2.2
+  # Text-to-Speechで生成した音声(バイト列)の再生に使用
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:

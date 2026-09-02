@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'screens/ai_support_screen.dart';
 import 'screens/alarm_list_screen.dart';
 import 'screens/task_list_screen.dart';
 import 'services/notification_service.dart';
@@ -26,7 +27,7 @@ class TaskManagerApp extends StatelessWidget {
   }
 }
 
-/// タスク管理とアラームをタブで切り替えるホーム画面。
+/// タスク管理・アラーム・生活サポートAIをタブで切り替えるホーム画面。
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -40,9 +41,11 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _selectedIndex == 0
-          ? const TaskListScreen()
-          : const AlarmListScreen(),
+      body: switch (_selectedIndex) {
+        0 => const TaskListScreen(),
+        1 => const AlarmListScreen(),
+        _ => const AiSupportScreen(),
+      },
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) =>
@@ -50,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.checklist), label: 'タスク'),
           NavigationDestination(icon: Icon(Icons.alarm), label: 'アラーム'),
+          NavigationDestination(icon: Icon(Icons.volume_up), label: 'AI音声'),
         ],
       ),
     );
